@@ -105,7 +105,9 @@ const app = {
     e.preventDefault();
     // Verify login
     const emailInput = e.target.querySelector('input[type="email"]');
+    const passwordInput = e.target.querySelector('#login-password');
     const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
     
     if (!this.state.registeredUser || this.state.registeredUser.email !== email) {
       emailInput.setCustomValidity('Account not found. Please sign up first.');
@@ -114,6 +116,13 @@ const app = {
     }
 
     emailInput.setCustomValidity('');
+    passwordInput.setCustomValidity('');
+    if (this.state.registeredUser.password !== password) {
+      passwordInput.setCustomValidity('Incorrect password. Try again or reset it.');
+      passwordInput.reportValidity();
+      return;
+    }
+
     const localPart = email.split('@')[0] || 'Student';
     const displayName = localPart
       .replace(/[._-]+/g, ' ')
@@ -130,7 +139,9 @@ const app = {
     // Simulate signup
     const name = e.target.querySelector('input[type="text"]').value;
     const emailInput = e.target.querySelector('input[type="email"]');
+    const passwordInput = e.target.querySelector('#signup-password');
     const email = emailInput.value.trim().toLowerCase();
+    const password = passwordInput.value;
 
     emailInput.setCustomValidity('');
     if (!this.isLikelyRealEmail(email)) {
@@ -139,10 +150,55 @@ const app = {
       return;
     }
 
-    this.state.registeredUser = { name: name, email: email };
-    localStorage.setItem('registeredUser', JSON.stringify({ name: name, email: email }));
+    passwordInput.setCustomValidity('');
+    if (password.length < 6) {
+      passwordInput.setCustomValidity('Password must be at least 6 characters long.');
+      passwordInput.reportValidity();
+      return;
+    }
+
+    this.state.registeredUser = { name: name, email: email, password: password };
+    localStorage.setItem('registeredUser', JSON.stringify({ name: name, email: email, password: password }));
     alert('Account created successfully! Please sign in with your email.');
     this.showScreen('login');
+  },
+
+  handleForgotPassword(e) {
+    e.preventDefault();
+    if (!this.state.registeredUser) {
+      alert('No account found. Please create an account first.');
+      return;
+    }
+
+    const email = prompt('Enter your registered email address:');
+    if (!email) return;
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (normalizedEmail !== this.state.registeredUser.email) {
+      alert('That email does not match any registered account.');
+      return;
+    }
+
+    const newPassword = prompt('Enter your new password (minimum 6 characters):');
+    if (!newPassword) return;
+
+    if (newPassword.length < 6) {
+      alert('Password must be at least 6 characters long.');
+      return;
+    }
+
+    this.state.registeredUser.password = newPassword;
+    localStorage.setItem('registeredUser', JSON.stringify(this.state.registeredUser));
+    alert('Password reset successful. You can now sign in with your new password.');
+  },
+
+  togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const isPassword = input.type === 'password';
+    input.type = isPassword ? 'text' : 'password';
+    button.textContent = isPassword ? 'Hide' : 'Show';
   },
 
   logout() {

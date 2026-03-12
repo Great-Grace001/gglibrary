@@ -133,6 +133,25 @@ body { background-color: #F7F8FC; color: #1A1D2E; }
 .auth-input:focus {
   outline: none; border-color: #3B28CC; background: white; box-shadow: 0 0 0 3px rgba(59, 40, 204, 0.1);
 }
+.password-field {
+  position: relative;
+}
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #3B28CC;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px;
+}
+.password-field .auth-input {
+  padding-right: 58px;
+}
 
 /* Subject Card Responsive */
 @media (max-width: 480px) {
@@ -189,9 +208,12 @@ body { background-color: #F7F8FC; color: #1A1D2E; }
         <div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
             <label style="font-size:13px;font-weight:600;color:#1A1D2E;">Password</label>
-            <a href="#" style="font-size:13px;color:#3B28CC;font-weight:600;text-decoration:none;">Forgot?</a>
+            <a href="#" onclick="app.handleForgotPassword(event)" style="font-size:13px;color:#3B28CC;font-weight:600;text-decoration:none;">Forgot?</a>
           </div>
-          <input type="password" class="auth-input" placeholder="••••••••" required>
+          <div class="password-field">
+            <input id="login-password" type="password" class="auth-input" placeholder="••••••••" required>
+            <button type="button" class="password-toggle" onclick="app.togglePasswordVisibility('login-password', this)">Show</button>
+          </div>
         </div>
         <button type="submit" style="width:100%;padding:14px;background:#3B28CC;color:white;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;">Sign In</button>
       </form>
@@ -226,7 +248,10 @@ body { background-color: #F7F8FC; color: #1A1D2E; }
         </div>
         <div>
           <label style="display:block;font-size:13px;font-weight:600;color:#1A1D2E;margin-bottom:8px;">Password</label>
-          <input type="password" class="auth-input" placeholder="Create a password" required>
+          <div class="password-field">
+            <input id="signup-password" type="password" class="auth-input" placeholder="Create a password" required minlength="6">
+            <button type="button" class="password-toggle" onclick="app.togglePasswordVisibility('signup-password', this)">Show</button>
+          </div>
         </div>
         <button type="submit" style="width:100%;padding:14px;background:#FF6B35;color:white;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;">Create Account</button>
       </form>
