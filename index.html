@@ -1,0 +1,583 @@
+
+<!DOCTYPE html>
+<html lang="en" style="height:auto;min-height:100%;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Great Grace Library — JAMB CBT Practice</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link id="heading-font-link" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link id="body-font-link" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        heading: ['var(--font-heading-name)', 'sans-serif'],
+        body: ['var(--font-body-name)', 'sans-serif'],
+      },
+      colors: {
+        brand: {
+          indigo: '#3B28CC',
+          coral: '#FF6B35',
+        }
+      },
+      boxShadow: {
+        custom: 'var(--shadow-custom)',
+        'custom-hover': 'var(--shadow-custom-hover)',
+      }
+    }
+  }
+}
+</script>
+<style>
+:root {
+  --font-heading-name: 'Inter';
+  --font-body-name: 'Inter';
+  --font-heading: 'Inter', sans-serif;
+  --font-body: 'Inter', sans-serif;
+  --shadow-custom: 0 2px 12px rgba(0,0,0,0.06);
+  --shadow-custom-hover: 0 4px 20px rgba(0,0,0,0.10);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body { background-color: #F7F8FC; color: #1A1D2E; }
+
+/* Custom Animations */
+.page-transition { animation: pageIn 300ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes pageIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.answer-card { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; border: 2px solid #E8EAF0; background: #FFFFFF; }
+.answer-card:hover { border-color: #3B28CC; background: #F0EEFF; transform: translateY(-1px); }
+.answer-card:active { transform: scale(0.98); }
+
+/* Selected State (Exam Mode) */
+.answer-card.selected { border-color: #3B28CC; background: #F0EEFF; box-shadow: 0 0 0 1px #3B28CC; }
+
+/* Review Mode Styles */
+.review-mode .answer-card { cursor: default; }
+.review-mode .answer-card:hover { transform: none; }
+.review-mode .answer-card.correct { border-color: #22C55E; background: #F0FDF4; }
+.review-mode .answer-card.incorrect { border-color: #EF4444; background: #FEF2F2; }
+
+.screen-section { display: none; }
+.screen-section.active { display: block; }
+
+/* Grid Map */
+.question-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.grid-item { 
+  height: 36px; display: flex; align-items: center; justify-content: center; 
+  border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; 
+  background: #F0F2F5; color: #6B7080; border: 1px solid transparent;
+}
+.grid-item.active { background: #3B28CC; color: white; }
+.grid-item.answered { background: #E0E7FF; color: #3B28CC; border-color: #3B28CC; }
+
+/* Mobile Optimizations */
+@media (max-width: 640px) {
+  .desktop-sidebar { display: none; }
+  .mobile-bottom-nav { display: flex; }
+  .exam-layout { flex-direction: column; }
+  .question-map-panel { display: none; } 
+  .question-map-mobile-toggle { display: block; }
+  .question-grid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .grid-item { height: 32px; font-size: 11px; }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .desktop-sidebar { display: none; }
+  .mobile-bottom-nav { display: flex; }
+  .exam-layout { flex-direction: column; }
+  .question-map-panel { display: none; } 
+  .question-map-mobile-toggle { display: block; }
+  .question-grid { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+}
+@media (min-width: 1025px) {
+  .desktop-sidebar { display: flex; }
+  .mobile-bottom-nav { display: none; }
+  .exam-layout { flex-direction: row; gap: 24px; max-width: 1200px; margin: 0 auto; }
+  .question-area { flex: 1; }
+  .question-map-panel { display: block; width: 280px; flex-shrink: 0; }
+  .question-map-mobile-toggle { display: none; }
+  .question-grid { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+}
+
+/* Tablet and Desktop Padding Adjustments */
+@media (max-width: 768px) {
+  main { padding-bottom: 100px; }
+}
+
+/* Font scaling for small screens */
+@media (max-width: 480px) {
+  h1 { font-size: 20px !important; }
+  h2 { font-size: 18px !important; }
+  h3 { font-size: 16px !important; }
+  h4 { font-size: 14px !important; }
+  p { font-size: 14px !important; }
+  button { font-size: 14px !important; padding: 12px !important; }
+  .auth-input { padding: 12px; font-size: 14px; }
+}
+
+.progress-ring__circle {
+  transition: stroke-dashoffset 1s ease-in-out;
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+}
+
+/* Auth Input Styles */
+.auth-input {
+  width: 100%; padding: 14px; border: 1px solid #E8EAF0; border-radius: 8px;
+  font-size: 15px; color: #1A1D2E; background: #F9FAFB; transition: all 0.2s;
+}
+.auth-input:focus {
+  outline: none; border-color: #3B28CC; background: white; box-shadow: 0 0 0 3px rgba(59, 40, 204, 0.1);
+}
+
+/* Subject Card Responsive */
+@media (max-width: 480px) {
+  .subject-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important; gap: 10px !important; }
+  .subject-card { padding: 12px !important; }
+  .subject-card h4 { font-size: 14px !important; }
+  .subject-card p { font-size: 12px !important; }
+}
+
+@media (min-width: 481px) and (max-width: 768px) {
+  .subject-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+}
+
+@media (min-width: 769px) {
+  .subject-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)) !important; }
+}
+
+/* Exam Screen Responsive */
+@media (max-width: 640px) {
+  #screen-exam { padding: 12px; }
+  .exam-content { padding: 12px !important; }
+  .question-text { font-size: 15px !important; }
+  .answer-card { padding: 12px !important; }
+  .answer-card span { font-size: 13px !important; }
+}
+
+/* Auth Form Responsive */
+@media (max-width: 480px) {
+  #screen-login > div, #screen-signup > div { padding: 20px !important; }
+  #screen-login > div > div, #screen-signup > div > div { max-width: 100% !important; padding: 20px !important; }
+}
+
+</style>
+</head>
+<body class="font-body" style="height:auto;min-height:100%;">
+
+<!-- ============================================================ -->
+<!-- SCREEN: LOGIN -->
+<!-- ============================================================ -->
+<div id="screen-login" class="screen-section active page-transition">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#F7F8FC;">
+    <div style="width:100%;max-width:420px;background:white;border-radius:24px;padding:40px;box-shadow:0 4px 24px rgba(0,0,0,0.04);">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div style="width:48px;height:48px;background:#3B28CC;border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:18px;margin:0 auto 16px;">GG</div>
+        <h1 class="font-heading" style="font-size:24px;font-weight:800;color:#1A1D2E;margin-bottom:8px;">Welcome Back</h1>
+        <p style="color:#6B7080;font-size:15px;">Sign in to continue your JAMB prep</p>
+      </div>
+
+      <form onsubmit="app.handleLogin(event)" style="display:flex;flex-direction:column;gap:20px;">
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#1A1D2E;margin-bottom:8px;">Email Address</label>
+          <input type="email" class="auth-input" placeholder="you@domain.com" pattern="[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}" title="Enter a valid email like you@domain.com" required>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <label style="font-size:13px;font-weight:600;color:#1A1D2E;">Password</label>
+            <a href="#" style="font-size:13px;color:#3B28CC;font-weight:600;text-decoration:none;">Forgot?</a>
+          </div>
+          <input type="password" class="auth-input" placeholder="••••••••" required>
+        </div>
+        <button type="submit" style="width:100%;padding:14px;background:#3B28CC;color:white;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;">Sign In</button>
+      </form>
+
+      <div style="text-align:center;margin-top:24px;font-size:14px;color:#6B7080;">
+        New user? <a href="#" onclick="app.showScreen('signup')" style="color:#3B28CC;font-weight:700;text-decoration:none;">Create Account</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: SIGN UP -->
+<!-- ============================================================ -->
+<div id="screen-signup" class="screen-section page-transition">
+  <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:#F7F8FC;">
+    <div style="width:100%;max-width:420px;background:white;border-radius:24px;padding:40px;box-shadow:0 4px 24px rgba(0,0,0,0.04);">
+      <div style="text-align:center;margin-bottom:32px;">
+        <div style="width:48px;height:48px;background:#FF6B35;border-radius:12px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:18px;margin:0 auto 16px;">GG</div>
+        <h1 class="font-heading" style="font-size:24px;font-weight:800;color:#1A1D2E;margin-bottom:8px;">Create Account</h1>
+        <p style="color:#6B7080;font-size:15px;">Start your journey to 300+ in JAMB</p>
+      </div>
+
+      <form onsubmit="app.handleSignup(event)" style="display:flex;flex-direction:column;gap:20px;">
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#1A1D2E;margin-bottom:8px;">Full Name</label>
+          <input type="text" class="auth-input" placeholder="e.g. Amara Okafor" required>
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#1A1D2E;margin-bottom:8px;">Email Address</label>
+          <input type="email" class="auth-input" placeholder="student@example.com" required>
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:#1A1D2E;margin-bottom:8px;">Password</label>
+          <input type="password" class="auth-input" placeholder="Create a password" required>
+        </div>
+        <button type="submit" style="width:100%;padding:14px;background:#FF6B35;color:white;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;margin-top:8px;">Create Account</button>
+      </form>
+
+      <div style="text-align:center;margin-top:24px;font-size:14px;color:#6B7080;">
+        Already have an account? <a href="#" onclick="app.showScreen('login')" style="color:#3B28CC;font-weight:700;text-decoration:none;">Sign In</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: DASHBOARD -->
+<!-- ============================================================ -->
+<div id="screen-dashboard" class="screen-section page-transition">
+  <div style="display:flex;min-height:100vh;">
+    <!-- Sidebar -->
+    <aside class="desktop-sidebar" style="width:260px;background:#FFFFFF;border-right:1px solid #E8EAF0;flex-direction:column;flex-shrink:0;position:sticky;top:0;height:100vh;">
+      <div style="padding:24px;border-bottom:1px solid #E8EAF0;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:36px;height:36px;background:#3B28CC;border-radius:8px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:13px;">GG</div>
+          <span class="font-heading" style="font-weight:800;font-size:18px;">Great Grace Library</span>
+        </div>
+      </div>
+      <nav style="padding:20px 12px;flex:1;">
+        <div class="nav-item" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;background:#F0EEFF;color:#3B28CC;font-weight:600;margin-bottom:4px;">
+          <i data-lucide="layout-dashboard" width="20"></i> Dashboard
+        </div>
+        <div class="nav-item" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;color:#6B7080;font-weight:500;cursor:pointer;">
+          <i data-lucide="book-open" width="20"></i> Subjects
+        </div>
+        <div class="nav-item" style="display:flex;align-items:center;gap:12px;padding:12px;border-radius:8px;color:#6B7080;font-weight:500;cursor:pointer;">
+          <i data-lucide="bar-chart-2" width="20"></i> Analytics
+        </div>
+      </nav>
+      <div style="padding:20px;border-top:1px solid #E8EAF0;">
+        <button onclick="app.logout()" style="display:flex;align-items:center;gap:12px;color:#EF4444;font-weight:600;background:none;border:none;cursor:pointer;width:100%;padding:8px;">
+          <i data-lucide="log-out" width="20"></i> Sign Out
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main style="flex:1;background:#F7F8FC;padding-bottom:80px;">
+      <!-- Mobile Header -->
+      <div style="background:#FFFFFF;padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #E8EAF0;" class="md:hidden">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:32px;height:32px;background:#3B28CC;border-radius:6px;display:flex;align-items:center;justify-content:center;color:white;font-weight:800;font-size:12px;">GG</div>
+          <span class="font-heading" style="font-weight:800;font-size:16px;">Great Grace Library</span>
+        </div>
+        <button onclick="app.logout()" style="color:#EF4444;background:none;border:none;">
+          <i data-lucide="log-out" width="20"></i>
+        </button>
+      </div>
+
+      <div style="padding:24px;max-width:1000px;margin:0 auto;">
+        <div style="margin-bottom:32px;">
+          <h1 class="font-heading" style="font-size:24px;font-weight:800;color:#1A1D2E;margin-bottom:8px;">Welcome back, <span id="user-name">Student</span>! 👋</h1>
+          <p style="color:#6B7080;">Ready to ace your JAMB? Select a subject to start a full 2-hour simulation.</p>
+        </div>
+
+        <h3 class="font-heading" style="font-size:18px;font-weight:700;color:#1A1D2E;margin-bottom:16px;">Select Subject (40 Questions • 2 Hours)</h3>
+        <p style="font-size:14px;color:#6B7080;margin-bottom:8px;">Available Subjects:</p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;">
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Mathematics</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">English</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Physics</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Chemistry</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Biology</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Economics</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Government</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Literature</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">CRS</span>
+          <span style="background:#FFFFFF;border:1px solid #E8EAF0;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:600;color:#3B28CC;">Commerce</span>
+        </div>
+        
+        <!-- Subject Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(160px, 1fr));gap:12px;" class="subject-grid">
+          
+          <!-- Mathematics -->
+          <div onclick="app.startExam('Mathematics')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#F0EEFF;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#3B28CC;margin-bottom:16px;">
+              <i data-lucide="calculator" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Mathematics</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- English -->
+          <div onclick="app.startExam('English')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#FFF3EE;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#FF6B35;margin-bottom:16px;">
+              <i data-lucide="book-a" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">English</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Physics -->
+          <div onclick="app.startExam('Physics')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#F0FDF4;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#22C55E;margin-bottom:16px;">
+              <i data-lucide="zap" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Physics</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Chemistry -->
+          <div onclick="app.startExam('Chemistry')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#FEF2F2;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#EF4444;margin-bottom:16px;">
+              <i data-lucide="flask-conical" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Chemistry</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Biology -->
+          <div onclick="app.startExam('Biology')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#ECFCCB;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#65A30D;margin-bottom:16px;">
+              <i data-lucide="dna" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Biology</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Economics -->
+          <div onclick="app.startExam('Economics')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#E0F2FE;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#0284C7;margin-bottom:16px;">
+              <i data-lucide="trending-up" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Economics</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Government -->
+          <div onclick="app.startExam('Government')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#FAE8FF;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#A855F7;margin-bottom:16px;">
+              <i data-lucide="landmark" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Government</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Literature -->
+          <div onclick="app.startExam('Literature')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#FFF1F2;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#BE123C;margin-bottom:16px;">
+              <i data-lucide="feather" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Literature</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- CRS -->
+          <div onclick="app.startExam('CRS')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#FEF9C3;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#CA8A04;margin-bottom:16px;">
+              <i data-lucide="book" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">CRS</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+          <!-- Commerce -->
+          <div onclick="app.startExam('Commerce')" style="background:white;border:1px solid #E8EAF0;border-radius:12px;padding:16px;cursor:pointer;transition:transform 0.2s;" class="subject-card" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div style="width:48px;height:48px;background:#ECFEFF;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#0891B2;margin-bottom:16px;">
+              <i data-lucide="shopping-bag" width="24"></i>
+            </div>
+            <h4 style="font-weight:700;font-size:16px;margin-bottom:4px;">Commerce</h4>
+            <p style="font-size:13px;color:#6B7080;">40 Questions</p>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+  
+  <!-- Mobile Bottom Nav -->
+  <div class="mobile-bottom-nav" style="position:fixed;bottom:0;left:0;right:0;background:white;border-top:1px solid #E8EAF0;padding:12px;justify-content:space-around;z-index:50;">
+    <div style="display:flex;flex-direction:column;align-items:center;color:#3B28CC;">
+      <i data-lucide="layout-dashboard" width="20"></i>
+      <span style="font-size:10px;font-weight:600;margin-top:4px;">Home</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;color:#9CA3AF;">
+      <i data-lucide="book-open" width="20"></i>
+      <span style="font-size:10px;font-weight:500;margin-top:4px;">Subjects</span>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:center;color:#9CA3AF;">
+      <i data-lucide="trophy" width="20"></i>
+      <span style="font-size:10px;font-weight:500;margin-top:4px;">Rank</span>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: EXAM SESSION (Functional) -->
+<!-- ============================================================ -->
+<div id="screen-exam" class="screen-section page-transition">
+  <div style="display:flex;flex-direction:column;height:100vh;background:#FFFFFF;">
+    
+    <!-- Top Bar -->
+    <div style="padding:12px 20px;border-bottom:1px solid #E8EAF0;display:flex;align-items:center;justify-content:space-between;background:white;position:sticky;top:0;z-index:20;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button onclick="app.confirmExit()" style="background:none;border:none;cursor:pointer;padding:4px;">
+          <i data-lucide="x" width="24" color="#6B7080"></i>
+        </button>
+        <div>
+          <h3 id="exam-subject" class="font-heading" style="font-size:14px;font-weight:700;color:#1A1D2E;">Mathematics</h3>
+          <p class="text-xs text-gray-500">JAMB Simulation • 40 Questions</p>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <button class="question-map-mobile-toggle md:hidden" onclick="app.toggleMapMobile()" style="padding:6px 10px;background:#F0F2F5;border-radius:6px;font-size:12px;font-weight:600;border:none;">
+          Map
+        </button>
+        <div style="background:#FFF3EE;color:#FF6B35;padding:6px 12px;border-radius:100px;font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;">
+          <i data-lucide="clock" width="14"></i>
+          <span id="exam-timer">02:00:00</span>
+        </div>
+        <button onclick="app.submitExam()" style="padding:8px 16px;background:#3B28CC;color:white;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;">Submit</button>
+      </div>
+    </div>
+
+    <!-- Review Mode Score Banner (Hidden by default) -->
+    <div id="review-score-banner" style="display:none;background:#3B28CC;color:white;padding:12px 20px;text-align:center;font-weight:600;font-size:14px;">
+      Final Score: <span id="review-score-display">0%</span>
+    </div>
+
+    <!-- Progress Bar -->
+    <div style="height:4px;background:#F0F2F5;width:100%;">
+      <div id="exam-progress" style="height:100%;background:#3B28CC;width:0%;transition:width 0.3s;"></div>
+    </div>
+
+    <!-- Main Exam Layout -->
+    <div class="exam-layout" style="flex:1;overflow:hidden;padding:20px;">
+      
+      <!-- Question Area -->
+      <div class="question-area" style="height:100%;overflow-y:auto;padding-right:10px;">
+        <div style="margin-bottom:24px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:16px;">
+            <span id="question-counter" style="font-size:12px;font-weight:700;color:#3B28CC;background:#F0EEFF;padding:4px 10px;border-radius:6px;">Question 1 of 40</span>
+            <span id="question-year" style="font-size:12px;color:#6B7080;background:#F7F8FC;padding:4px 10px;border-radius:6px;">JAMB</span>
+          </div>
+          
+          <p id="question-text" style="font-size:18px;line-height:1.6;color:#1A1D2E;font-weight:500;margin-bottom:24px;">
+            Loading question...
+          </p>
+
+          <!-- Options Container -->
+          <div id="options-container" style="display:flex;flex-direction:column;gap:12px;">
+            <!-- Options will be injected here by JS -->
+          </div>
+        </div>
+
+        <!-- Explanation (Hidden in Exam Mode) -->
+        <div id="explanation-box" style="display:none;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:12px;padding:16px;margin-top:24px;animation:pageIn 0.3s;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#16A34A;font-weight:700;font-size:14px;">
+            <i data-lucide="lightbulb" width="16"></i> Explanation
+          </div>
+          <p id="explanation-text" style="font-size:14px;color:#1A1D2E;line-height:1.6;"></p>
+        </div>
+      </div>
+
+      <!-- Question Map Panel (Sidebar) -->
+      <div id="question-map-panel" class="question-map-panel" style="background:#FFFFFF;border-left:1px solid #E8EAF0;padding-left:20px;overflow-y:auto;">
+        <h4 style="font-size:14px;font-weight:700;color:#1A1D2E;margin-bottom:12px;">Question Map</h4>
+        <div id="question-grid" class="question-grid">
+          <!-- Grid items 1-40 generated by JS -->
+        </div>
+        
+        <div style="margin-top:24px;padding:16px;background:#F7F8FC;border-radius:8px;">
+          <h5 style="font-size:12px;font-weight:700;margin-bottom:8px;">Legend</h5>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+            <div style="width:12px;height:12px;background:#3B28CC;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#6B7080;">Current</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px;">
+            <div style="width:12px;height:12px;background:#E0E7FF;border:1px solid #3B28CC;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#6B7080;">Answered</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div style="width:12px;height:12px;background:#F0F2F5;border-radius:2px;"></div>
+            <span style="font-size:11px;color:#6B7080;">Unanswered</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Bottom Controls -->
+    <div class="exam-controls" style="padding:16px 20px;border-top:1px solid #E8EAF0;background:white;display:flex;justify-content:space-between;align-items:center;">
+      <button onclick="app.prevQuestion()" id="btn-prev" style="padding:12px 20px;border:1px solid #E8EAF0;background:white;border-radius:8px;font-weight:600;color:#6B7080;cursor:pointer;display:flex;align-items:center;gap:8px;" disabled>
+        <i data-lucide="chevron-left" width="18"></i> Previous
+      </button>
+      
+      <button onclick="app.nextQuestion()" id="btn-next" style="padding:12px 20px;background:#3B28CC;border-radius:8px;font-weight:600;color:white;border:none;cursor:pointer;display:flex;align-items:center;gap:8px;">
+        Next <i data-lucide="chevron-right" width="18"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SCREEN: RESULTS -->
+<!-- ============================================================ -->
+<div id="screen-results" class="screen-section page-transition">
+  <div style="min-height:100vh;background:#F7F8FC;padding:24px;">
+    <div style="max-width:600px;margin:0 auto;">
+      <div style="background:white;border-radius:24px;padding:32px;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,0.04);margin-bottom:24px;">
+        <h2 class="font-heading" style="font-size:24px;font-weight:800;color:#1A1D2E;margin-bottom:8px;">Exam Submitted! 📝</h2>
+        <p style="color:#6B7080;margin-bottom:24px;">Here is your performance in <span id="result-subject">Mathematics</span></p>
+
+        <!-- Score Ring -->
+        <div style="position:relative;width:160px;height:160px;margin:0 auto 24px;">
+          <svg width="160" height="160">
+            <circle cx="80" cy="80" r="70" fill="none" stroke="#F0F2F5" stroke-width="12" />
+            <circle id="score-ring" class="progress-ring__circle" cx="80" cy="80" r="70" fill="none" stroke="#3B28CC" stroke-width="12" stroke-dasharray="440" stroke-dashoffset="440" stroke-linecap="round" />
+          </svg>
+          <div style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%);">
+            <span id="result-score" style="font-size:36px;font-weight:800;color:#1A1D2E;display:block;">0%</span>
+            <span id="result-fraction" style="font-size:12px;color:#6B7080;font-weight:600;">0/40</span>
+          </div>
+        </div>
+
+        <!-- Remark -->
+        <div id="result-remark" style="font-size:18px;font-weight:700;color:#3B28CC;margin-bottom:32px;background:#F0EEFF;display:inline-block;padding:8px 24px;border-radius:100px;">
+          Good Job!
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:32px;">
+          <div style="background:#F0FDF4;padding:12px;border-radius:12px;">
+            <div id="result-correct" style="font-size:20px;font-weight:800;color:#16A34A;">0</div>
+            <div style="font-size:11px;color:#16A34A;font-weight:600;">CORRECT</div>
+          </div>
+          <div style="background:#FEF2F2;padding:12px;border-radius:12px;">
+            <div id="result-wrong" style="font-size:20px;font-weight:800;color:#EF4444;">0</div>
+            <div style="font-size:11px;color:#EF4444;font-weight:600;">WRONG</div>
+          </div>
+          <div style="background:#FFF7ED;padding:12px;border-radius:12px;">
+            <div id="result-skipped" style="font-size:20px;font-weight:800;color:#EA580C;">0</div>
+            <div style="font-size:11px;color:#EA580C;font-weight:600;">SKIPPED</div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-direction:column;">
+          <button onclick="app.reviewExam()" style="width:100%;padding:14px;background:#3B28CC;color:white;border:none;border-radius:12px;font-weight:700;font-size:15px;cursor:pointer;">Review Answers</button>
+          <button onclick="app.showScreen('dashboard')" style="width:100%;padding:14px;background:white;color:#6B7080;border:1px solid #E8EAF0;border-radius:12px;font-weight:600;font-size:15px;cursor:pointer;">Back to Dashboard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
