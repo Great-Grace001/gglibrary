@@ -58,12 +58,6 @@ const coreQuestions = {
   ]
 };
 
-const emailServiceConfig = {
-  publicKey: 'YOUR_EMAILJS_PUBLIC_KEY',
-  serviceId: 'YOUR_EMAILJS_SERVICE_ID',
-  templateId: 'YOUR_EMAILJS_TEMPLATE_ID'
-};
-
 // --- APP LOGIC ---
 const app = {
   state: {
@@ -107,36 +101,6 @@ const app = {
     return tld.length >= 2;
   },
 
-  isEmailServiceConfigured() {
-    return (
-      emailServiceConfig.publicKey !== 'YOUR_EMAILJS_PUBLIC_KEY' &&
-      emailServiceConfig.serviceId !== 'YOUR_EMAILJS_SERVICE_ID' &&
-      emailServiceConfig.templateId !== 'YOUR_EMAILJS_TEMPLATE_ID'
-    );
-  },
-
-  async sendConfirmationEmail(name, email) {
-    if (!window.emailjs) {
-      throw new Error('Email service is unavailable.');
-    }
-
-    if (!this.isEmailServiceConfigured()) {
-      throw new Error('Email service is not configured.');
-    }
-
-    window.emailjs.init({ publicKey: emailServiceConfig.publicKey });
-    return window.emailjs.send(
-      emailServiceConfig.serviceId,
-      emailServiceConfig.templateId,
-      {
-        to_name: name,
-        to_email: email,
-        app_name: 'Great Grace Library',
-        message: `Welcome ${name}! Your account has been created successfully.`
-      }
-    );
-  },
-
   handleLogin(e) {
     e.preventDefault();
     // Verify login
@@ -161,7 +125,7 @@ const app = {
     this.showScreen('dashboard');
   },
 
-  async handleSignup(e) {
+  handleSignup(e) {
     e.preventDefault();
     // Simulate signup
     const name = e.target.querySelector('input[type="text"]').value;
@@ -175,16 +139,9 @@ const app = {
       return;
     }
 
-    try {
-      await this.sendConfirmationEmail(name, email);
-    } catch (error) {
-      alert('Could not send confirmation email. Please try again later.');
-      return;
-    }
-
     this.state.registeredUser = { name: name, email: email };
     localStorage.setItem('registeredUser', JSON.stringify({ name: name, email: email }));
-    alert('Account created and confirmation email sent successfully. Please sign in with your email.');
+    alert('Account created successfully! Please sign in with your email.');
     this.showScreen('login');
   },
 
