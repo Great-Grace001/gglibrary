@@ -122,7 +122,8 @@ const app = {
       return 'http://localhost:3000';
     }
 
-    if (window.location.hostname === 'localhost' && window.location.port && window.location.port !== '3000') {
+    const localHosts = new Set(['localhost', '127.0.0.1']);
+    if (localHosts.has(window.location.hostname) && window.location.port && window.location.port !== '3000') {
       return 'http://localhost:3000';
     }
 
@@ -133,7 +134,8 @@ const app = {
     const method = options.method || 'POST';
     const token = options.token || this.state.authToken;
     const headers = { 'Content-Type': 'application/json' };
-    const url = path.startsWith('http') ? path : `${this.getApiBaseUrl()}${path}`;
+    const baseUrl = this.getApiBaseUrl();
+    const url = path.startsWith('http') ? path : `${baseUrl}${path}`;
 
     if (token) {
       headers.Authorization = `Bearer ${token}`;
@@ -149,22 +151,37 @@ const app = {
     }
 
     let response;
+    let raw = '';
     try {
       response = await fetch(url, requestOptions);
+      raw = await response.text();
+
+      const htmlLikeResponse = raw.trim().startsWith('<!DOCTYPE') || raw.trim().startsWith('<html');
+      const shouldTryLocalFallback = !path.startsWith('http') && baseUrl !== 'http://localhost:3000' && htmlLikeResponse;
+
+      if (shouldTryLocalFallback) {
+        const fallbackResponse = await fetch(`http://localhost:3000${path}`, requestOptions);
+        response = fallbackResponse;
+        raw = await fallbackResponse.text();
+      }
     } catch (error) {
       throw new Error('Cannot reach server. Start backend with "npm start" and open http://localhost:3000');
     }
 
-    const raw = await response.text();
     let data = {};
     try {
       data = raw ? JSON.parse(raw) : {};
     } catch (error) {
-      data = { message: raw || 'Unexpected server response.' };
+      const htmlLikeResponse = raw.trim().startsWith('<!DOCTYPE') || raw.trim().startsWith('<html');
+      if (htmlLikeResponse) {
+        data = { message: 'Wrong server response. Open the app via http://localhost:3000 and try again.' };
+      } else {
+        data = { message: raw || 'Unexpected server response.' };
+      }
     }
 
     if (!response.ok) {
-      throw new Error(data.message || 'Request failed');
+      throw new Error(data.message || `Request failed (${response.status})`);
     }
     return data;
   },
