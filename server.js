@@ -1,9 +1,11 @@
+require('dotenv').config();
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
+const cors = require('cors');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +16,7 @@ const TOKEN_EXPIRES_IN = '7d';
 let mailTransporter;
 
 app.use(express.json());
+app.use(cors());
 app.use(express.static(__dirname));
 
 function normalizeEmail(email) {

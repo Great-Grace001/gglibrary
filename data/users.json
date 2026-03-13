@@ -3,7 +3,21 @@
     "id": "1773404785192",
     "name": "great grace",
     "email": "mheritage284@gmail.com",
-    "password": "Frank@09",
+    "password": "$2a$10$B7OjwsVgeDGhF6h2GzoICO4X5phDHbrSc3ITEKhL4/VIbyIaS1F9q",
     "createdAt": "2026-03-13T12:26:25.192Z"
+  },
+  {
+    "id": "1773405895127",
+    "name": "Test User",
+    "email": "testuser.utme.2026@examplemail.com",
+    "password": "$2a$10$glpnIQQv3tjJ6Fr.w/NPhO6cv1kO5FGxd0BtJEi8hfXi27DhOHpyK",
+    "createdAt": "2026-03-13T12:44:55.127Z"
+  },
+  {
+    "id": "1773406757907",
+    "name": "Fix Check",
+    "email": "fixcheck.utme.2026@gmail.com",
+    "password": "$2a$10$MUkOuQX5QWtymEp/W9qSAuR9gU8d5wxsdz3ObqPlaiOxRbn1S/1ye",
+    "createdAt": "2026-03-13T12:59:17.907Z"
   }
 ]

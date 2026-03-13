@@ -112,10 +112,28 @@ const app = {
     return String(password || '').trim();
   },
 
+  getApiBaseUrl() {
+    const configuredBase = (localStorage.getItem('apiBaseUrl') || '').trim();
+    if (configuredBase) {
+      return configuredBase.replace(/\/$/, '');
+    }
+
+    if (window.location.protocol === 'file:') {
+      return 'http://localhost:3000';
+    }
+
+    if (window.location.hostname === 'localhost' && window.location.port && window.location.port !== '3000') {
+      return 'http://localhost:3000';
+    }
+
+    return window.location.origin;
+  },
+
   async apiRequest(path, payload = null, options = {}) {
     const method = options.method || 'POST';
     const token = options.token || this.state.authToken;
     const headers = { 'Content-Type': 'application/json' };
+    const url = path.startsWith('http') ? path : `${this.getApiBaseUrl()}${path}`;
 
     if (token) {
       headers.Authorization = `Bearer ${token}`;
@@ -130,9 +148,21 @@ const app = {
       requestOptions.body = JSON.stringify(payload);
     }
 
-    const response = await fetch(path, requestOptions);
+    let response;
+    try {
+      response = await fetch(url, requestOptions);
+    } catch (error) {
+      throw new Error('Cannot reach server. Start backend with "npm start" and open http://localhost:3000');
+    }
 
-    const data = await response.json();
+    const raw = await response.text();
+    let data = {};
+    try {
+      data = raw ? JSON.parse(raw) : {};
+    } catch (error) {
+      data = { message: raw || 'Unexpected server response.' };
+    }
+
     if (!response.ok) {
       throw new Error(data.message || 'Request failed');
     }
@@ -225,13 +255,23 @@ const app = {
 
   async handleSignup(e) {
     e.preventDefault();
-    const name = e.target.querySelector('input[type="text"]').value;
+    const name = e.target.querySelector('input[type="text"]').value.trim();
     const emailInput = e.target.querySelector('input[type="email"]');
     const passwordInput = e.target.querySelector('#signup-password');
     const email = emailInput.value.trim().toLowerCase();
     const password = this.normalizePassword(passwordInput.value);
 
     emailInput.setCustomValidity('');
+    if (!name) {
+      const nameInput = e.target.querySelector('input[type="text"]');
+      nameInput.setCustomValidity('Full name is required.');
+      nameInput.reportValidity();
+      return;
+    }
+
+    const nameInput = e.target.querySelector('input[type="text"]');
+    nameInput.setCustomValidity('');
+
     if (!this.isLikelyRealEmail(email)) {
       emailInput.setCustomValidity('Use a valid, real email address (placeholder emails are not allowed).');
       emailInput.reportValidity();
