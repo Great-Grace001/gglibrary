@@ -67,24 +67,117 @@ const app = {
     currentIndex: 0,
     answers: {}, 
     score: 0,
-    timer: 120 * 60, 
+    timer: 30 * 60, 
     timerInterval: null,
     mode: 'exam', 
     isSubmitted: false,
     user: null,
+    authToken: null,
     registeredUser: null,
-    finalScore: 0
+    finalScore: 0,
+    sessionQuestionBanks: {}
   },
 
-  init() {
+  async init() {
     lucide.createIcons();
-    const savedUser = localStorage.getItem('registeredUser');
-    if (savedUser) {
-      this.state.registeredUser = JSON.parse(savedUser);
-      this.showScreen('login');
-    } else {
-      this.showScreen('signup');
+    const savedSessionRaw = localStorage.getItem('currentUser');
+    const savedToken = localStorage.getItem('authToken');
+    if (savedSessionRaw) {
+      try {
+        const savedSession = JSON.parse(savedSessionRaw);
+        if (savedSession && savedSession.email && savedToken) {
+          const result = await this.apiRequest('/api/auth/me', null, {
+            method: 'GET',
+            token: savedToken
+          });
+
+          const verifiedUser = result.user || savedSession;
+          this.state.user = verifiedUser;
+          this.state.authToken = savedToken;
+          localStorage.setItem('currentUser', JSON.stringify(verifiedUser));
+          document.getElementById('user-name').textContent = verifiedUser.name || 'Student';
+          this.prepareSessionQuestionBanks();
+          this.showScreen('dashboard');
+          return;
+        }
+      } catch (error) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+      }
     }
+    this.showScreen('login');
+  },
+
+  normalizePassword(password) {
+    return String(password || '').trim();
+  },
+
+  async apiRequest(path, payload = null, options = {}) {
+    const method = options.method || 'POST';
+    const token = options.token || this.state.authToken;
+    const headers = { 'Content-Type': 'application/json' };
+
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
+    const requestOptions = {
+      method,
+      headers
+    };
+
+    if (payload && method !== 'GET') {
+      requestOptions.body = JSON.stringify(payload);
+    }
+
+    const response = await fetch(path, requestOptions);
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.message || 'Request failed');
+    }
+    return data;
+  },
+
+  shuffleArray(items) {
+    const shuffled = [...items];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  },
+
+  createQuestionVariant(sourceQ, variantRound) {
+    if (variantRound === 0) {
+      return { ...sourceQ };
+    }
+
+    const options = [...sourceQ.options];
+    const optionCount = options.length;
+    const shift = optionCount > 0 ? (variantRound % optionCount) : 0;
+    const rotatedOptions = options.map((_, index) => options[(index + shift) % optionCount]);
+    const rotatedCorrect = optionCount > 0
+      ? ((sourceQ.correct - shift) % optionCount + optionCount) % optionCount
+      : sourceQ.correct;
+
+    return {
+      ...sourceQ,
+      text: `Set ${variantRound + 1}: ${sourceQ.text}`,
+      options: rotatedOptions,
+      correct: rotatedCorrect
+    };
+  },
+
+  prepareSessionQuestionBanks() {
+    const subjects = Object.keys(coreQuestions);
+    const banks = {};
+
+    subjects.forEach((subject) => {
+      banks[subject] = this.generateQuestions(subject);
+    });
+
+    this.state.sessionQuestionBanks = banks;
   },
 
   isLikelyRealEmail(email) {
@@ -101,47 +194,42 @@ const app = {
     return tld.length >= 2;
   },
 
-  handleLogin(e) {
+  async handleLogin(e) {
     e.preventDefault();
-    // Verify login
     const emailInput = e.target.querySelector('input[type="email"]');
     const passwordInput = e.target.querySelector('#login-password');
     const email = emailInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
-    
-    if (!this.state.registeredUser || this.state.registeredUser.email !== email) {
-      emailInput.setCustomValidity('Account not found. Please sign up first.');
-      emailInput.reportValidity();
-      return;
-    }
+    const password = this.normalizePassword(passwordInput.value);
 
     emailInput.setCustomValidity('');
     passwordInput.setCustomValidity('');
-    if (this.state.registeredUser.password !== password) {
-      passwordInput.setCustomValidity('Incorrect password. Try again or reset it.');
-      passwordInput.reportValidity();
-      return;
-    }
 
-    const localPart = email.split('@')[0] || 'Student';
-    const displayName = localPart
-      .replace(/[._-]+/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-    this.state.user = { name: displayName, email: email };
-    document.getElementById('user-name').textContent = displayName;
-    this.showScreen('dashboard');
+    try {
+      const result = await this.apiRequest('/api/auth/login', { email, password });
+      const user = result.user || { email };
+      const token = result.token || null;
+      this.state.user = user;
+      this.state.authToken = token;
+      localStorage.setItem('currentUser', JSON.stringify(user));
+      if (token) {
+        localStorage.setItem('authToken', token);
+      }
+      this.prepareSessionQuestionBanks();
+      document.getElementById('user-name').textContent = user.name || 'Student';
+      this.showScreen('dashboard');
+    } catch (error) {
+      passwordInput.setCustomValidity(error.message || 'Incorrect password. Try again or reset it.');
+      passwordInput.reportValidity();
+    }
   },
 
-  handleSignup(e) {
+  async handleSignup(e) {
     e.preventDefault();
-    // Simulate signup
     const name = e.target.querySelector('input[type="text"]').value;
     const emailInput = e.target.querySelector('input[type="email"]');
     const passwordInput = e.target.querySelector('#signup-password');
     const email = emailInput.value.trim().toLowerCase();
-    const password = passwordInput.value;
+    const password = this.normalizePassword(passwordInput.value);
 
     emailInput.setCustomValidity('');
     if (!this.isLikelyRealEmail(email)) {
@@ -157,39 +245,47 @@ const app = {
       return;
     }
 
-    this.state.registeredUser = { name: name, email: email, password: password };
-    localStorage.setItem('registeredUser', JSON.stringify({ name: name, email: email, password: password }));
-    alert('Account created successfully! Please sign in with your email.');
-    this.showScreen('login');
+    try {
+      const result = await this.apiRequest('/api/auth/signup', { name, email, password });
+      if (result.emailSent) {
+        alert('Account created successfully! A confirmation email has been sent. Please sign in with your email.');
+      } else {
+        alert('Account created successfully! Please sign in with your email. (Confirmation email is not available right now.)');
+      }
+      this.showScreen('login');
+    } catch (error) {
+      emailInput.setCustomValidity(error.message || 'Unable to create account.');
+      emailInput.reportValidity();
+    }
   },
 
-  handleForgotPassword(e) {
+  async handleForgotPassword(e) {
     e.preventDefault();
-    if (!this.state.registeredUser) {
-      alert('No account found. Please create an account first.');
-      return;
-    }
 
     const email = prompt('Enter your registered email address:');
     if (!email) return;
 
     const normalizedEmail = email.trim().toLowerCase();
-    if (normalizedEmail !== this.state.registeredUser.email) {
-      alert('That email does not match any registered account.');
-      return;
-    }
 
     const newPassword = prompt('Enter your new password (minimum 6 characters):');
     if (!newPassword) return;
 
-    if (newPassword.length < 6) {
+    const normalizedNewPassword = this.normalizePassword(newPassword);
+
+    if (normalizedNewPassword.length < 6) {
       alert('Password must be at least 6 characters long.');
       return;
     }
 
-    this.state.registeredUser.password = newPassword;
-    localStorage.setItem('registeredUser', JSON.stringify(this.state.registeredUser));
-    alert('Password reset successful. You can now sign in with your new password.');
+    try {
+      await this.apiRequest('/api/auth/forgot-password', {
+        email: normalizedEmail,
+        newPassword: normalizedNewPassword
+      });
+      alert('Password reset successful. You can now sign in with your new password.');
+    } catch (error) {
+      alert(error.message || 'Unable to reset password.');
+    }
   },
 
   togglePasswordVisibility(inputId, button) {
@@ -203,7 +299,10 @@ const app = {
 
   logout() {
     this.state.user = null;
+    this.state.authToken = null;
     localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
+    this.state.sessionQuestionBanks = {};
     this.showScreen('login');
   },
 
@@ -223,27 +322,49 @@ const app = {
   generateQuestions(subject) {
     const core = coreQuestions[subject] || coreQuestions['Mathematics'];
     const totalNeeded = 40;
-    let generated = [];
-    
+    const generated = [];
+    const usedText = new Set();
+
     for (let i = 0; i < totalNeeded; i++) {
       const sourceQ = core[i % core.length];
+      const variantRound = Math.floor(i / core.length);
+      const variant = this.createQuestionVariant(sourceQ, variantRound);
+
+      let uniqueText = variant.text;
+      let duplicateIndex = 2;
+      while (usedText.has(uniqueText)) {
+        uniqueText = `${variant.text} (${duplicateIndex})`;
+        duplicateIndex++;
+      }
+
+      usedText.add(uniqueText);
       generated.push({
-        ...sourceQ,
-        id: i + 1,
-        year: sourceQ.year 
+        ...variant,
+        text: uniqueText
       });
     }
-    return generated;
+
+    const shuffled = this.shuffleArray(generated);
+
+    return shuffled.map((sourceQ, index) => ({
+      ...sourceQ,
+      id: index + 1,
+      year: sourceQ.year
+    }));
   },
 
   startExam(subject) {
     this.state.subject = subject;
-    this.state.questions = this.generateQuestions(subject);
+    const expectedCount = 40;
+    if (!this.state.sessionQuestionBanks[subject] || this.state.sessionQuestionBanks[subject].length !== expectedCount) {
+      this.prepareSessionQuestionBanks();
+    }
+    this.state.questions = [...this.state.sessionQuestionBanks[subject]];
     this.state.currentIndex = 0;
     this.state.answers = {};
     this.state.isSubmitted = false;
     this.state.mode = 'exam';
-    this.state.timer = 120 * 60; 
+    this.state.timer = 30 * 60; 
 
     document.getElementById('exam-subject').textContent = subject;
     document.getElementById('screen-exam').classList.remove('review-mode');
